@@ -1,20 +1,34 @@
 const port = 8001, hostname = 'localhost', secure = false;
-console.log(`Running at http${secure ? 's' : ''}://${hostname}:${port}/`);
+import { buildRepositories } from "./repositories";
+import { RouteFunction } from "./routes/$type";
+import { createRoom } from "./routes/create-room";
+import { joinRoom } from "./routes/join-room";
 
-const routes: Record<string, () => (Response | PromiseLike<Response>)> = {
-    '/': () => new Response(Bun.file('./resource/index.html')),
-    '/script.js': async () => new Response(
-        (await Bun.build({ entrypoints: ['./src/client/index.tsx'] })).outputs[0]),
-    '/api': () => Response.json({ message: 'Hello from the server!' })
-};
+function main() {
+    console.log(`Running at http${secure ? 's' : ''}://${hostname}:${port}/`);
 
-Bun.serve({
-    port, hostname,
-    async fetch(req) {
-        const url = new URL(req.url);
-        const response = await routes[url.pathname]?.();
-        if (response) return response;
+    const repositories = buildRepositories();
 
-        return new Response('Not found!', { status: 404 });
-    }
-});
+    const routes: Record<string, RouteFunction> = {
+        '/createRoom': createRoom(repositories.Room, repositories.Player),
+        '/joinRoom': joinRoom(repositories.Room, repositories.Player),
+
+        // Statics
+        '': () => new Response(Bun.file('./resource/index.html')),
+        '/script.js': async () => new Response(
+            (await Bun.build({ entrypoints: ['./src/client/index.tsx'] })).outputs[0]),
+    };
+
+    Bun.serve({
+        port, hostname,
+        async fetch(req) {
+            const pathname = new URL(req.url).pathname;
+            const trimmedPathname = pathname.endsWith('/') ? pathname.substring(0, pathname.length - 1) : pathname;
+            const response = await routes[trimmedPathname]?.(req);
+            if (response) return response;
+
+            return new Response('Not found!', { status: 404 });
+        }
+    });
+}
+main();

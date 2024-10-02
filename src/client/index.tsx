@@ -1,32 +1,30 @@
 import { render } from "preact";
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
+import { CreateRoom, JoinRoom } from "./create-room";
+import { Lobby } from "./lobby";
 
-const ServerFetcher = () => {
-    const [loaded, setLoaded] = useState(false);
-    const [message, setMessage] = useState('');
-    useEffect(() => {
-        (async () => {
-            try {
-                const response = await fetch('./api');
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                setMessage(data.message);
-            } catch (error) {
-                setMessage(`ERROR: ${error.message}`);
-            } finally {
-                setLoaded(true);
-            }
-        })();
-    }, []);
-    return loaded ? <p>{message}</p> : <p>Loading...</p>;
-};
+type AppStates = 'init' | 'create-room' | 'join-room' | 'joined';
 const App = () => {
-    const [fetched, setFetched] = useState(false);
-    const onButtonClick = () => setFetched(true);
-    return <>
-        <h1>Hello from the client!</h1>
-        {!fetched ? <button onClick={onButtonClick}>Call the server!</button> : <ServerFetcher />}
-    </>;
+    const [state, setState] = useState<AppStates>('init');
+    const [lobbyData, setPlayerList] = useState<{ roomId: string, roomName: string, playerList: string[]; }>();
+    const onFoundRoom = (roomName: string, roomId: string, playerList: string[]) => {
+        setPlayerList({ roomName, roomId, playerList });
+        setState('joined');
+    };
+    if (state === 'init') {
+        return <>
+            <h1>Welcome to PLW's plaything!</h1>
+            <button onClick={() => setState('create-room')}>Create a room</button>
+            <button onClick={() => setState('join-room')}>Join a room</button>
+        </>;
+    } else if (state === 'create-room') {
+        return <CreateRoom onConfirm={onFoundRoom} onCancel={() => setState('init')} />;
+    } else if (state === 'join-room') {
+        return <JoinRoom onConfirm={onFoundRoom} onCancel={() => setState('init')} />;
+    } else if (state === 'joined') {
+        return <Lobby lobbyData={lobbyData!} />;
+    }
+    return <></>;
 };
 
 render(<App />, document.body);

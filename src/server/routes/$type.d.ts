@@ -1,0 +1,1 @@
+export type RouteFunction = (req: Request) => Response | Promise<Response>;
