@@ -1,4 +1,5 @@
 const port = 8001, hostname = 'localhost', secure = false;
+import { compileAsync } from "sass";
 import { buildRepositories } from "./repositories";
 import { RouteFunction } from "./routes/$type";
 import { createRoom } from "./routes/create-room";
@@ -17,6 +18,15 @@ function main() {
         '': () => new Response(Bun.file('./resource/index.html')),
         '/script.js': async () => new Response(
             (await Bun.build({ entrypoints: ['./src/client/index.tsx'] })).outputs[0]),
+        '/style.css': async () => {
+            try {
+                const x = await compileAsync('./src/styles/main.sass');
+                const file = new Blob([x.css], { type: 'text/css' });
+                return new Response(file);
+            } catch {
+                return new Response("Can't compile sass", { status: 500 });
+            }
+        }
     };
 
     Bun.serve({
