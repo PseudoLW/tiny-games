@@ -35,11 +35,11 @@ export function Repository<T extends { asKey: string; }>() {
 }
 export type Repository<T extends { asKey: string; }> = ReturnType<typeof Repository<T>>;
 export const enum RepositoryErrorType {
-    AlreadyExists,
-    DoesNotExist,
+    AlreadyExists = 'Key already exists',
+    DoesNotExist = 'Key does not exist',
 }
 export class RepositoryError extends Error {
     constructor(public readonly type: RepositoryErrorType) {
-        super();
+        super(`Repository error: ${type}`);
     }
 }

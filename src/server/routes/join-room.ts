@@ -3,7 +3,7 @@ import { requestValidators } from "../../common/requests";
 import type { ResponseJSONs } from "../../common/responses";
 import { Player } from "../core/player";
 import { Room } from "../core/room";
-import { Repository } from "../repositories/$repository";
+import { Repository, RepositoryError, RepositoryErrorType } from "../repositories/$repository";
 import { RouteFunction } from "./$type";
 
 export const joinRoom: (roomRepo: Repository<Room>, playerRepo: Repository<Player>) => RouteFunction =
@@ -22,13 +22,23 @@ export const joinRoom: (roomRepo: Repository<Room>, playerRepo: Repository<Playe
                 return Response.json(out, { status: 404 });
             }
             const room = roomRepo.get(roomId);
-            const player = Player(playerName, '000000', room);
-            playerRepo.add(player);
+            try {
+                const player = room.addPlayer(playerName, '000000');
+                playerRepo.add(player);
+            } catch (e) {
+                if (e instanceof RepositoryError && e.type === RepositoryErrorType.AlreadyExists) {
+                    out = {
+                        success: false,
+                        roomError: null,
+                        playerError: 'Player with this name already exists in this room'
+                    };
+                    return Response.json(out);
+                }
+            }
 
-            room.players.push(player);
             out = {
                 success: true,
-                currentPlayers: room.players.map(s => s.name)
+                currentPlayers: room.playerNames
             };
             return Response.json(out);
         } else {

@@ -28,12 +28,9 @@ export const createRoom: (roomRepo: Repository<Room>, playerRepo: Repository<Pla
             } while (roomRepo.hasKey(roomName + '#' + roomId));
 
             const room = Room(roomName, roomId);
-            const player = Player(hostName, 'ff0000', room);
-
+            const player = room.addPlayer(hostName, 'ff0000');
             roomRepo.add(room);
             playerRepo.add(player);
-
-            room.players.push(player);
             out = { success: true, roomId, currentPlayers: [player.name] };
         } else {
             const issues = flatten(parseResult.issues).nested!;
