@@ -4,12 +4,12 @@ import type { RequestJSONs } from "../common/requests";
 import type { ResponseJSONs } from "../common/responses";
 
 export type CreateOrJoinRoomProps = {
-    onConfirm(roomName: string, roomId: string, players: string[]): void;
+    onConfirm(roomName: string, roomId: string, player: string, players: string[], websocketToken: number): void;
     onCancel(): void;
 };
 type Part<T extends Record<string, unknown>> = { [k in keyof T]?: T[k] | undefined };
 
-const CreateOrJoinRoom = <Req, Res extends { success: boolean; }>(
+const CreateOrJoinRoom = <Req, Res extends { success: false; } | { success: true; websocketToken: number; }>(
     fetchURL: string,
     roomLabel: string,
     header: string,
@@ -17,7 +17,7 @@ const CreateOrJoinRoom = <Req, Res extends { success: boolean; }>(
     requestDataParser: (roomData: string, player: string) => Req,
     roomDataGetter: (body: Res & { success: true; }, roomFormData: string) => [string, string],
     errorGetter: (body: Res & { success: false; }) => Part<{ room: string, player: string; }>,
-    playerDataGetter: (body: Res & { success: true; }, playerFormData: string) => string[]
+    playerDataGetter: (body: Res & { success: true; }, playerFormData: string) => [string, string[]]
 ) =>
     ({ onConfirm, onCancel }: CreateOrJoinRoomProps) => {
         const eidPlayerName = useId();
@@ -43,7 +43,8 @@ const CreateOrJoinRoom = <Req, Res extends { success: boolean; }>(
                     const [roomName, roomId] = roomDataGetter(body as Res & { success: true; }, roomData);
                     onConfirm(
                         roomName, roomId,
-                        playerDataGetter(body as Res & { success: true; }, playerData));
+                        ...playerDataGetter(body as Res & { success: true; }, playerData),
+                        body.websocketToken);
                 } else {
                     setFetching(false);
                     setErrors(errorGetter(body as Res & { success: false; }));
@@ -94,7 +95,7 @@ export const CreateRoom = CreateOrJoinRoom<RequestJSONs['/createRoom'], Response
     (roomData, player) => ({ hostName: player, roomName: roomData }),
     (body, formData) => ([formData, body.roomId]),
     ({ roomError, hostError }) => ({ room: roomError ?? undefined, player: hostError ?? undefined }),
-    (_, playerName) => ([playerName])
+    (_, playerName) => ([playerName, [playerName]])
 );
 
 export const JoinRoom = CreateOrJoinRoom<RequestJSONs['/joinRoom'], ResponseJSONs['/joinRoom']>(
@@ -102,5 +103,5 @@ export const JoinRoom = CreateOrJoinRoom<RequestJSONs['/joinRoom'], ResponseJSON
     (roomData, player) => ({ playerName: player, roomId: roomData }),
     (_, roomFormData) => (roomFormData.split('#') as [string, string]),
     ({ roomError, playerError }) => ({ room: roomError ?? undefined, player: playerError ?? undefined }),
-    (body) => (body.currentPlayers)
+    (body, player) => ([player, body.currentPlayers])
 );

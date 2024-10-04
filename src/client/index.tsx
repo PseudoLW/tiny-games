@@ -1,14 +1,14 @@
 import { render } from "preact";
 import { useState } from 'preact/hooks';
 import { CreateRoom, JoinRoom } from "./create-room";
-import { Lobby } from "./lobby";
+import { Lobby, WaitingListProps } from "./lobby";
 
 type AppStates = 'init' | 'create-room' | 'join-room' | 'joined';
 const App = () => {
     const [state, setState] = useState<AppStates>('init');
-    const [lobbyData, setPlayerList] = useState<{ roomId: string, roomName: string, playerList: string[]; }>();
-    const onFoundRoom = (roomName: string, roomId: string, playerList: string[]) => {
-        setPlayerList({ roomName, roomId, playerList });
+    const [lobbyData, setLobbyData] = useState<WaitingListProps['lobbyData']>();
+    const onFoundRoom = (roomName: string, roomId: string, player: string, playerList: string[], websocketToken: number) => {
+        setLobbyData({ roomName, roomId, playerList, player, websocketToken });
         setState('joined');
     };
     if (state === 'init') {

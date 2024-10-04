@@ -5,21 +5,24 @@ import { Player } from "../core/player";
 import { Room } from "../core/room";
 import { Repository, RepositoryError, RepositoryErrorType } from "../repositories/$repository";
 import { RouteFunction } from "./$type";
+import { TokenBank } from "../repositories";
 
-export const joinRoom: (roomRepo: Repository<Room>, playerRepo: Repository<Player>) => RouteFunction =
-    (roomRepo, playerRepo) => async (req) => {
-        let out: ResponseJSONs['/joinRoom'];
+export const joinRoom: (
+    roomRepo: Repository<Room>,
+    playerRepo: Repository<Player>,
+    tokenBank: TokenBank
+) => RouteFunction =
+    (roomRepo, playerRepo, tokenBank) => async (req) => {
         const data = await req.json();
         const parseResult = safeParse(requestValidators["/joinRoom"], data);
+        const response = (s: ResponseJSONs['/joinRoom']) => Response.json(s);
         if (parseResult.success) {
             const { roomId, playerName } = parseResult.output;
             if (!roomRepo.hasKey(roomId)) {
-                out = {
-                    success: false,
+                return response({
+                    success: false, playerError: null,
                     roomError: "A room with that id can't be found.",
-                    playerError: null
-                };
-                return Response.json(out, { status: 404 });
+                });
             }
             const room = roomRepo.get(roomId);
             try {
@@ -27,28 +30,21 @@ export const joinRoom: (roomRepo: Repository<Room>, playerRepo: Repository<Playe
                 playerRepo.add(player);
             } catch (e) {
                 if (e instanceof RepositoryError && e.type === RepositoryErrorType.AlreadyExists) {
-                    out = {
-                        success: false,
-                        roomError: null,
+                    return response({
+                        success: false, roomError: null,
                         playerError: 'Player with this name already exists in this room'
-                    };
-                    return Response.json(out);
+                    });
                 }
             }
 
-            out = {
-                success: true,
-                currentPlayers: room.playerNames
-            };
-            return Response.json(out);
+            return response({ success: true, currentPlayers: room.playerNames, websocketToken: tokenBank.generate() });
         } else {
             const issues = flatten(parseResult.issues).nested!;
-            out = {
+            return response({
                 success: false,
                 roomError: issues['roomId']?.[0] ?? null,
                 playerError: issues['playerName']?.[0] ?? null
-            };
-            return Response.json(out, { status: 400 });
+            });
         }
     }
 
