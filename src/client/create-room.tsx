@@ -4,12 +4,12 @@ import type { RequestJSONs } from "../common/requests";
 import type { ResponseJSONs } from "../common/responses";
 
 export type CreateOrJoinRoomProps = {
-    onConfirm(roomName: string, roomId: string, player: string, players: string[], websocketToken: number): void;
+    onConfirm(roomName: string, roomId: string, player: string, players: { name: string; ready: boolean; }[], websocketToken: string): void;
     onCancel(): void;
 };
 type Part<T extends Record<string, unknown>> = { [k in keyof T]?: T[k] | undefined };
 
-const CreateOrJoinRoom = <Req, Res extends { success: false; } | { success: true; websocketToken: number; }>(
+const CreateOrJoinRoom = <Req, Res extends { success: false; } | { success: true; websocketToken: string; }>(
     fetchURL: string,
     roomLabel: string,
     header: string,
@@ -17,7 +17,7 @@ const CreateOrJoinRoom = <Req, Res extends { success: false; } | { success: true
     requestDataParser: (roomData: string, player: string) => Req,
     roomDataGetter: (body: Res & { success: true; }, roomFormData: string) => [string, string],
     errorGetter: (body: Res & { success: false; }) => Part<{ room: string, player: string; }>,
-    playerDataGetter: (body: Res & { success: true; }, playerFormData: string) => [string, string[]]
+    playerDataGetter: (body: Res & { success: true; }, playerFormData: string) => [string, { name: string; ready: boolean; }[]]
 ) =>
     ({ onConfirm, onCancel }: CreateOrJoinRoomProps) => {
         const eidPlayerName = useId();
@@ -95,7 +95,7 @@ export const CreateRoom = CreateOrJoinRoom<RequestJSONs['/createRoom'], Response
     (roomData, player) => ({ hostName: player, roomName: roomData }),
     (body, formData) => ([formData, body.roomId]),
     ({ roomError, hostError }) => ({ room: roomError ?? undefined, player: hostError ?? undefined }),
-    (_, playerName) => ([playerName, [playerName]])
+    (_, playerName) => ([playerName, [{ name: playerName, ready: false }]])
 );
 
 export const JoinRoom = CreateOrJoinRoom<RequestJSONs['/joinRoom'], ResponseJSONs['/joinRoom']>(

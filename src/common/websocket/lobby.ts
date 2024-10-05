@@ -15,9 +15,6 @@ export type LobbyMessageToClient = {
     type: 'ping';
     state: number;
 } | {
-    type: 'player-join';
-    name: string;
-} | {
-    type: 'player-leave';
-    name: string;
+    type: 'player-update';
+    players: { name: string; ready: boolean; }[];
 };

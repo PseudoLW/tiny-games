@@ -7,7 +7,13 @@ type AppStates = 'init' | 'create-room' | 'join-room' | 'joined';
 const App = () => {
     const [state, setState] = useState<AppStates>('init');
     const [lobbyData, setLobbyData] = useState<WaitingListProps['lobbyData']>();
-    const onFoundRoom = (roomName: string, roomId: string, player: string, playerList: string[], websocketToken: number) => {
+    const onFoundRoom = (
+        roomName: string,
+        roomId: string,
+        player: string,
+        playerList: { name: string; ready: boolean; }[],
+        websocketToken: string
+    ) => {
         setLobbyData({ roomName, roomId, playerList, player, websocketToken });
         setState('joined');
     };

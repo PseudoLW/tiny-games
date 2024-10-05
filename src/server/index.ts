@@ -1,5 +1,6 @@
 const port = 8001, hostname = 'localhost', secure = false;
 import { compileAsync } from "sass";
+import { LobbyMessageToClient } from "../common/websocket/lobby";
 import { buildRepositories, tokenBank } from "./repositories";
 import { RouteFunction } from "./routes/$type";
 import { createRoom } from "./routes/create-room";
@@ -18,14 +19,17 @@ function main() {
         '/createRoom': createRoom(repositories.Room, repositories.Player, websocketTokenBank),
         '/joinRoom': joinRoom(repositories.Room, repositories.Player, websocketTokenBank),
 
+
         // Websocket
         '/ws'(req, server) {
-            if (server.upgrade(req)) {
-                console.log(`Received connection from ${new URL(req.url).searchParams.get("id")}.`);
+            if (server.upgrade(req, {
+                data: { token: new URL(req.url).searchParams.get("id") }
+            })) {
                 return 'ws';
             }
             return new Response("Upgrade failed", { status: 500 });
         },
+
 
         // Statics
         ''() {
@@ -49,7 +53,7 @@ function main() {
         }
     };
 
-    Bun.serve({
+    const server = Bun.serve<{ token: string; }>({
         port, hostname,
         async fetch(req, server) {
             const pathname = new URL(req.url).pathname;
@@ -64,6 +68,16 @@ function main() {
             return new Response('Not found!', { status: 404 });
         },
         websocket: {
+            open(ws) {
+                const conn = websocketTokenBank.get(ws.data.token);
+                ws.subscribe(conn.room);
+                console.log(`Subscribing ${ws.data.token} to ${conn.room}`);
+                server.publish(conn.room, JSON.stringify({
+                    type: 'player-update',
+                    players: repositories.Room.get(conn.room).playerNames.map(s => ({ name: s, ready: true }))
+                } satisfies LobbyMessageToClient));
+                console.log(`Published to ${conn.room}`);
+            },
             message() { }
         }
     });

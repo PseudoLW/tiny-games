@@ -37,7 +37,10 @@ export const joinRoom: (
                 }
             }
 
-            return response({ success: true, currentPlayers: room.playerNames, websocketToken: tokenBank.generate() });
+            return response({
+                success: true, currentPlayers: room.playerNames,
+                websocketToken: tokenBank.generate(room.asKey, playerName)
+            });
         } else {
             const issues = flatten(parseResult.issues).nested!;
             return response({

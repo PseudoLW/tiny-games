@@ -1,7 +1,7 @@
 import type { Player } from "./core/player";
 import type { Room } from "./core/room";
 import { Repository } from "./repositories/$repository";
-import { randomInt } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { generateKey } from "./util";
 export const buildRepositories = () => {
     return {
@@ -11,13 +11,21 @@ export const buildRepositories = () => {
 };
 
 export const tokenBank = () => {
-    const bank: Record<number, true> = {};
+    const bank: Record<string, { room: string, player: string; }> = {};
     return {
-        generate() {
-            return generateKey(() => randomInt(0xffff_ffff_ffff + 1), (k) => k in bank)!;
+
+        generate(room: string, player: string) {
+            const key = generateKey(
+                () => randomBytes(64).toString('base64url'),
+                (k) => k in bank)!;
+            bank[key] = { room, player };
+            return key;
+        },
+        get(key: string) {
+            return bank[key];
         },
 
-        remove(key: number) {
+        remove(key: string) {
             delete bank[key];
         }
     };

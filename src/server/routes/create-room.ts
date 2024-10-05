@@ -33,7 +33,10 @@ export const createRoom: (
         const player = room.addPlayer(hostName, 'ff0000');
         roomRepo.add(room);
         playerRepo.add(player);
-        return response({ success: true, roomId, currentPlayers: [player.name], websocketToken: tokenBank.generate() });
+        return response({
+            success: true, roomId, currentPlayers: [player.name],
+            websocketToken: tokenBank.generate(room.asKey, player.name)
+        });
     } else {
         const issues = flatten(parseResult.issues).nested!;
         return response({
