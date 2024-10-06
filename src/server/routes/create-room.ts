@@ -24,7 +24,7 @@ export const createRoom: (
             20);
         if (roomId === undefined) {
             return response({
-                success: false, hostError: null,
+                success: false, playerError: null,
                 roomError: 'Failed to create a room with this name. Try another name.',
             });
         }
@@ -34,7 +34,11 @@ export const createRoom: (
         roomRepo.add(room);
         playerRepo.add(player);
         return response({
-            success: true, roomId, currentPlayers: [player.name],
+            success: true,
+            roomIdNumber: roomId,
+            roomName,
+            playerName: player.name,
+            currentPlayers: [{ name: player.name, ready: false }],
             websocketToken: tokenBank.generate(room.asKey, player.name)
         });
     } else {
@@ -42,7 +46,7 @@ export const createRoom: (
         return response({
             success: false,
             roomError: issues['roomName']?.[0] ?? null,
-            hostError: issues['hostName']?.[0] ?? null
+            playerError: issues['hostName']?.[0] ?? null
         });
     }
 }

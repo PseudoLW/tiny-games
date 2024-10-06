@@ -71,12 +71,10 @@ function main() {
             open(ws) {
                 const conn = websocketTokenBank.get(ws.data.token);
                 ws.subscribe(conn.room);
-                console.log(`Subscribing ${ws.data.token} to ${conn.room}`);
                 server.publish(conn.room, JSON.stringify({
                     type: 'player-update',
                     players: repositories.Room.get(conn.room).playerNames.map(s => ({ name: s, ready: true }))
                 } satisfies LobbyMessageToClient));
-                console.log(`Published to ${conn.room}`);
             },
             message() { }
         }

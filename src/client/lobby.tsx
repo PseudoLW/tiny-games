@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { LobbyMessageToClient, LobbyMessageToServer } from "../common/websocket/lobby";
 import { WebsocketHandler } from "./effect/websocket";
 
-export type WaitingListProps = {
+export type LobbyProps = {
     lobbyData: {
         player: string;
         playerList: { name: string; ready: boolean; }[];
@@ -12,7 +12,7 @@ export type WaitingListProps = {
     };
 };
 
-export const Lobby = ({ lobbyData: { websocketToken, playerList: playerListProp, roomName, roomId, player } }: WaitingListProps) => {
+export const Lobby = ({ lobbyData: { websocketToken, playerList: playerListProp, roomName, roomId, player } }: LobbyProps) => {
     const [playerList, setPlayerList] = useState(playerListProp);
     useEffect(() => {
         console.log('hello');

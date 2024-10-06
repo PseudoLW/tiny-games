@@ -1,9 +1,20 @@
-export type ResponseJSONs = {
-    '/createRoom':
-    { success: true; roomId: string; currentPlayers: { name: string; ready: boolean; }[]; websocketToken: string; } |
-    { success: false; roomError: string | null; hostError: string | null; };
+export type ResponseChoice<Success, Failure> =
+    (Success & { success: true; }) |
+    (Failure & { success: false; });
 
-    '/joinRoom':
-    { success: true; currentPlayers: { name: string; ready: boolean; }[]; websocketToken: string; } |
-    { success: false; roomError: string | null; playerError: string | null; };
+export type RoomJoinResponse = {
+    success: true;
+    playerName: string;
+    roomIdNumber: string;
+    roomName: string;
+    currentPlayers: { name: string; ready: boolean; }[];
+    websocketToken: string;
+};
+export type RoomJoinError = {
+    roomError: string | null;
+    playerError: string | null;
+};
+export type ResponseJSONs = {
+    '/createRoom': ResponseChoice<RoomJoinResponse, RoomJoinError>;
+    '/joinRoom': ResponseChoice<RoomJoinResponse, RoomJoinError>;
 };

@@ -38,7 +38,11 @@ export const joinRoom: (
             }
 
             return response({
-                success: true, currentPlayers: room.playerNames,
+                success: true,
+                currentPlayers: room.playerNames.map((s) => ({ name: s, ready: false })),
+                roomIdNumber: room.id,
+                roomName: room.name,
+                playerName: playerName,
                 websocketToken: tokenBank.generate(room.asKey, playerName)
             });
         } else {
