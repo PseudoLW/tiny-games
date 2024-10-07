@@ -5,6 +5,7 @@ import { buildRepositories, tokenBank } from "./repositories";
 import { RouteFunction } from "./routes/$type";
 import { createRoom } from "./routes/create-room";
 import { joinRoom } from "./routes/join-room";
+import { createPlayerRepository } from "./repositories/playerRepository";
 function main() {
     console.log(`Running at http${secure ? 's' : ''}://${hostname}:${port}/`);
 
@@ -14,10 +15,11 @@ function main() {
 
     const repositories = buildRepositories();
     const websocketTokenBank = tokenBank();
+    const repo = createPlayerRepository();
 
     const routes: Record<string, RouteFunction> = {
-        '/createRoom': createRoom(repositories.Room, repositories.Player, websocketTokenBank),
-        '/joinRoom': joinRoom(repositories.Room, repositories.Player, websocketTokenBank),
+        '/createRoom': createRoom(repositories.Room, repositories.Player, websocketTokenBank, repo),
+        '/joinRoom': joinRoom(repositories.Room, repositories.Player, websocketTokenBank, repo),
 
 
         // Websocket
