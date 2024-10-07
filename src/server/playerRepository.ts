@@ -5,28 +5,32 @@ export type PlayerIdentifier = Readonly<{ name: string; roomName: string; roomNu
 export type RoomIdentifier = Readonly<{ roomName: string, roomNumber: string; }>;
 
 export interface PlayerRepository {
-    /** Obtain a player. */
-    get(id: PlayerIdentifier): Player;
+    /** Obtain a player by its identifier. */
+    getByIdentifier(id: PlayerIdentifier): Player;
 
-    /** Creates a player after given */
+    /** Obtain a player by its token. */
+    getByToken(token: string): Player;
+
+    /** Create a player after given */
     create(token: string, id: PlayerIdentifier): Player;
 
-    /** Generates an available token in the repository. Does not register the token. */
+    /** Generate an available token in the repository. Does not register the token. */
     generatePlayerToken(): string;
 
-    /** Generates an available 3-digit room id number for a room with this name. Does not register the room number. */
+    /** Generate an available 3-digit room id number for a room with this name. Does not register the room number. */
     generateRoomNumber(roomName: string): string;
 
-    /** Deletes a player, detaching them from a room. Last player deleted will delete a room. */
+    /** Delete a player, detaching them from a room. Last player deleted will delete a room. */
     delete(player: Player): void;
 
-    /** Returns all the players in a room. */
+    /** Return all the players in a room. */
     getPlayersInRoom(id: RoomIdentifier): readonly Player[];
 
-    /** Check if a room with such identifier exists. */
-    hasRoom(id: RoomIdentifier): boolean;
+    /** Ensure if a room with such identifier exists. Otherwise, throws. */
+    assertRoomExists(id: RoomIdentifier): void;
 }
 
+/** A Symbol flagging that player is ready to play a game. */
 export const Ready = Symbol('Ready');
 
 export interface Player {
@@ -77,8 +81,10 @@ export function createPlayerRepository(): PlayerRepository {
             return key;
         },
 
-        hasRoom(id) {
-            return getRoomKey(id) in rooms;
+        assertRoomExists(id) {
+            if (!(getRoomKey(id) in rooms)) {
+                throw new RoomDoesNotExistsError();
+            };
         },
 
         create(token, id) {
@@ -117,8 +123,12 @@ export function createPlayerRepository(): PlayerRepository {
             }
         },
 
-        get(id) {
+        getByIdentifier(id) {
             return playerKeys[getPlayerKey(id)];
+        },
+
+        getByToken(token) {
+            return playerTokens[token];
         },
 
         getPlayersInRoom(id) {
@@ -134,4 +144,8 @@ export class TokenCreationFailureError extends Error {
 
 export class PlayerAlreadyExistsError extends Error {
     constructor() { super('Player already exists.'); }
+}
+
+export class RoomDoesNotExistsError extends Error {
+    constructor() { super('Room does not exists'); }
 }

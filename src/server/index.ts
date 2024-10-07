@@ -1,11 +1,10 @@
 const port = 8001, hostname = 'localhost', secure = false;
 import { compileAsync } from "sass";
 import { LobbyMessageToClient } from "../common/websocket/lobby";
-import { buildRepositories, tokenBank } from "./repositories";
+import { createPlayerRepository, Ready } from "./playerRepository";
 import { RouteFunction } from "./routes/$type";
 import { createRoom } from "./routes/create-room";
 import { joinRoom } from "./routes/join-room";
-import { createPlayerRepository } from "./repositories/playerRepository";
 function main() {
     console.log(`Running at http${secure ? 's' : ''}://${hostname}:${port}/`);
 
@@ -13,14 +12,10 @@ function main() {
         websocketUrl: `ws${secure ? 's' : ''}://${hostname}:${port}/ws`,
     };
 
-    const repositories = buildRepositories();
-    const websocketTokenBank = tokenBank();
     const repo = createPlayerRepository();
-
     const routes: Record<string, RouteFunction> = {
-        '/createRoom': createRoom(repositories.Room, repositories.Player, websocketTokenBank, repo),
-        '/joinRoom': joinRoom(repositories.Room, repositories.Player, websocketTokenBank, repo),
-
+        '/createRoom': createRoom(repo),
+        '/joinRoom': joinRoom(repo),
 
         // Websocket
         '/ws'(req, server) {
@@ -29,7 +24,7 @@ function main() {
             })) {
                 return 'ws';
             }
-            return new Response("Upgrade failed", { status: 500 });
+            return new Response("Websocket upgrade failed", { status: 500 });
         },
 
 
@@ -55,7 +50,7 @@ function main() {
         }
     };
 
-    const server = Bun.serve<{ token: string; }>({
+    Bun.serve<{ token: string; }>({
         port, hostname,
         async fetch(req, server) {
             const pathname = new URL(req.url).pathname;
@@ -71,13 +66,21 @@ function main() {
         },
         websocket: {
             open(ws) {
-                const conn = websocketTokenBank.get(ws.data.token);
-                ws.subscribe(conn.room);
-                server.publish(conn.room, JSON.stringify({
-                    type: 'player-update',
-                    players: repositories.Room.get(conn.room).playerNames.map(s => ({ name: s, ready: true }))
-                } satisfies LobbyMessageToClient));
+                const player = repo.getByToken(ws.data.token);
+                const players = repo.getPlayersInRoom(player.id);
+                const playerStatus = players.map((s) => ({
+                    name: s.name,
+                    ready: s.gameData === Ready
+                }));
+
+                player.websocket = ws;
+                players.forEach((s) => {
+                    s.websocket?.send(JSON.stringify({
+                        type: 'player-update', players: playerStatus
+                    } satisfies LobbyMessageToClient));
+                });
             },
+
             message() { }
         }
     });

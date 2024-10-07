@@ -15,8 +15,6 @@ export type LobbyProps = {
 export const Lobby = ({ lobbyData: { websocketToken, playerList: playerListProp, roomName, roomId, player } }: LobbyProps) => {
     const [playerList, setPlayerList] = useState(playerListProp);
     useEffect(() => {
-        console.log('hello');
-
         const ws = WebsocketHandler<LobbyMessageToServer, LobbyMessageToClient>(
             websocketToken,
             (data) => {
@@ -25,7 +23,6 @@ export const Lobby = ({ lobbyData: { websocketToken, playerList: playerListProp,
                 }
             }
         );
-
 
         return () => {
             ws.close();

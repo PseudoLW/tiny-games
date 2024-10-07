@@ -1,53 +1,43 @@
-import { randomInt } from 'crypto';
-import { flatten, safeParse } from "valibot";
+import { flatten, parse, ValiError } from "valibot";
 import { requestValidators } from "../../common/requests";
 import type { ResponseJSONs } from "../../common/responses";
-import { Player } from "../core/player";
-import { Room } from "../core/room";
-import { Repository } from "../repositories/$repository";
+import { PlayerIdentifier, PlayerRepository, TokenCreationFailureError } from '../playerRepository';
 import { RouteFunction } from "./$type";
-import { TokenBank } from '../repositories';
-import { generateKey } from '../util';
 
-export const createRoom: (
-    roomRepo: Repository<Room>,
-    playerRepo: Repository<Player>,
-    bank: TokenBank
-) => RouteFunction = (roomRepo, playerRepo, tokenBank) => async (req) => {
-    const parseResult = safeParse(requestValidators["/createRoom"], await req.json());
+export const createRoom: (repo: PlayerRepository) => RouteFunction = (repo) => async (req) => {
     const response = (s: ResponseJSONs['/createRoom']) => Response.json(s);
-    if (parseResult.success) {
-        const { roomName, hostName } = parseResult.output;
-        const roomId = generateKey(
-            () => randomInt(10000).toString().padStart(4, '0'),
-            (k) => roomRepo.hasKey(roomName + '#' + k),
-            20);
-        if (roomId === undefined) {
+    try {
+        const result = parse(requestValidators["/createRoom"], await req.json());
+        const { roomName, hostName } = result;
+        const roomNumber = repo.generateRoomNumber(roomName);
+        const token = repo.generatePlayerToken();
+        const playerId: PlayerIdentifier = {
+            name: hostName, roomName, roomNumber
+        };
+        repo.create(token, playerId);
+
+        return response({
+            success: true, playerName: hostName,
+            roomIdNumber: roomNumber, roomName,
+            currentPlayers: [{ name: hostName, ready: false }],
+            websocketToken: token
+        });
+    } catch (e) {
+        if (e instanceof ValiError) {
+            const issues = flatten(e.issues).nested!;
+            return response({
+                success: false,
+                roomError: issues['roomName']?.[0] ?? null,
+                playerError: issues['hostName']?.[0] ?? null
+            });
+        } else if (e instanceof TokenCreationFailureError) {
             return response({
                 success: false, playerError: null,
                 roomError: 'Failed to create a room with this name. Try another name.',
             });
+        } else {
+            throw e;
         }
-
-        const room = Room(roomName, roomId);
-        const player = room.addPlayer(hostName, 'ff0000');
-        roomRepo.add(room);
-        playerRepo.add(player);
-        return response({
-            success: true,
-            roomIdNumber: roomId,
-            roomName,
-            playerName: player.name,
-            currentPlayers: [{ name: player.name, ready: false }],
-            websocketToken: tokenBank.generate(room.asKey, player.name)
-        });
-    } else {
-        const issues = flatten(parseResult.issues).nested!;
-        return response({
-            success: false,
-            roomError: issues['roomName']?.[0] ?? null,
-            playerError: issues['hostName']?.[0] ?? null
-        });
     }
 }
 
